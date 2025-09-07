@@ -13,7 +13,7 @@ import (
 
 func SetCommands(bot *tgbotapi.BotAPI) []tgbotapi.BotCommand {
 	botCommands := []tgbotapi.BotCommand{
-		{Command: "start", Description: "start the bot"},
+		{Command: "start", Description: "Start the bot"},
 	}
 
 	cfg := tgbotapi.NewSetMyCommands(botCommands...)
