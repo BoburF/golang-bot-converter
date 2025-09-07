@@ -2,18 +2,19 @@ package main
 
 import (
 	"context"
+	"log"
 
-	"github.com/BoburF/golang-bot-converter/domain"
+	usecases_user "github.com/BoburF/golang-bot-converter/application/usecases/user"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 )
 
 type BotHandler struct {
-	userRepo domain.UserRepository
+	registerUserUsecase *usecases_user.RegisterUserUsecase
 }
 
-func NewBotHandler(repo domain.UserRepository) *BotHandler {
-	return &BotHandler{userRepo: repo}
+func NewBotHandler(registerUserUsecase *usecases_user.RegisterUserUsecase) *BotHandler {
+	return &BotHandler{registerUserUsecase: registerUserUsecase}
 }
 
 func (h *BotHandler) HandleMessage(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -22,15 +23,42 @@ func (h *BotHandler) HandleMessage(ctx context.Context, b *bot.Bot, update *mode
 	}
 
 	chatID := update.Message.Chat.ID
-	phone := update.Message.From.Username
 
-	_, err := h.userRepo.GetByPhone(phone)
-	if err != nil {
-		_ = h.userRepo.Create(update.Message.From.FirstName, phone)
+	if update.Message.Contact != nil {
+		user, err := h.registerUserUsecase.Execute(update.Message.From.FirstName, update.Message.Contact.PhoneNumber)
+		if err != nil {
+			log.Print(err)
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: update.Message.Chat.ID,
+				Text:   "Something went wrong!",
+			})
+			return
+		}
+
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "Welcome " + user.Name + "!",
+		})
+		return
 	}
 
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: chatID,
-		Text:   "Welcome " + update.Message.From.FirstName,
-	})
+	switch update.Message.Text {
+	case "/start":
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: chatID,
+			Text:   "Please share your phone number to continue:",
+			ReplyMarkup: &models.ReplyKeyboardMarkup{
+				Keyboard: [][]models.KeyboardButton{
+					{
+						{
+							Text:           "Share phone number 📱",
+							RequestContact: true,
+						},
+					},
+				},
+				ResizeKeyboard:  true,
+				OneTimeKeyboard: true,
+			},
+		})
+	}
 }

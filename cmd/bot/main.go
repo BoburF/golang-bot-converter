@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/BoburF/golang-bot-converter/domain"
+	usecases_user "github.com/BoburF/golang-bot-converter/application/usecases/user"
 	infra_db_sql "github.com/BoburF/golang-bot-converter/infra/db/sql"
 	infra_db_sql_repositories "github.com/BoburF/golang-bot-converter/infra/db/sql/repositories"
 	"github.com/go-telegram/bot"
@@ -17,16 +17,19 @@ func main() {
 	db := infra_db_sql.NewSQLITE()
 	userRepo := infra_db_sql_repositories.NewUserRepository(db)
 
+	// usecases
+	registerUserUsecase := usecases_user.NewRegisterUser(userRepo)
+
 	loadConfig()
 
-	loadBot(userRepo)
+	loadBot(registerUserUsecase)
 }
 
-func loadBot(userRepo domain.UserRepository) {
+func loadBot(registerUserUsecase *usecases_user.RegisterUserUsecase) {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	handler := NewBotHandler(userRepo)
+	handler := NewBotHandler(registerUserUsecase)
 
 	opts := []bot.Option{
 		bot.WithDefaultHandler(handler.HandleMessage),
